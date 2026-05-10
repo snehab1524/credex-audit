@@ -1,84 +1,74 @@
-// app/audit/[id]/page.tsx
-import { Metadata } from "next";
-import { notFound } from "next/navigation";
-import AuditResults from "@/components/AuditResults";
-import type { AuditResult } from "@/types";
-import { connectDB } from "@/lib/mongodb";
-import { Audit } from "@/lib/models";
+// app/page.tsx  — Server Component (no "use client")
+import SpendForm from "@/components/SpendForm";
 
-async function getAudit(id: string): Promise<AuditResult | null> {
-  try {
-    await connectDB();
-    const audit = await Audit.findOne({ id }).lean() as unknown as AuditResult & {
-      email?: string;
-      companyName?: string;
-      _id?: unknown;
-      __v?: unknown;
-    } | null;
+export default function HomePage() {
+  return (
+    <main className="min-h-screen bg-dark-900">
+      {/* Nav */}
+      <nav className="border-b border-dark-700 px-6 py-4 flex items-center justify-between">
+        <span className="font-display font-bold text-xl tracking-tight">
+          <span className="text-brand-400">AI</span>Audit
+        </span>
+        <a
+          href="https://credex.rocks"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-gray-400 hover:text-brand-400 transition-colors"
+        >
+          by Credex →
+        </a>
+      </nav>
 
-    if (!audit) return null;
+      {/* Hero */}
+      <section className="max-w-3xl mx-auto px-6 pt-16 pb-10 text-center animate-fade-up">
+        <div className="inline-flex items-center gap-2 bg-brand-500/10 border border-brand-500/20 text-brand-400 text-sm font-mono px-4 py-1.5 rounded-full mb-6">
+          Free · No signup · Takes 2 minutes
+        </div>
+        <h1 className="font-display text-5xl md:text-6xl font-bold leading-tight mb-4">
+          Are you overpaying
+          <br />
+          <span className="text-brand-400">on AI tools?</span>
+        </h1>
+        <p className="text-lg text-gray-400 max-w-xl mx-auto mb-2">
+          Enter your AI subscriptions. Get an instant audit showing exactly where
+          you&apos;re overspending and how much you could save.
+        </p>
+        <p className="text-sm text-gray-500">
+          Used by engineering teams worldwide. Average savings found:{" "}
+          <span className="text-brand-400 font-semibold">$340/month</span>
+        </p>
+      </section>
 
-    // Strip private fields
-    const { email: _e, companyName: _c, _id: _id2, __v: _v, ...publicAudit } = audit;
-    void _e; void _c; void _id2; void _v;
+      {/* How it works */}
+      <section className="max-w-3xl mx-auto px-6 pb-10">
+        <div className="grid grid-cols-3 gap-4 text-center">
+          {[
+            { step: "1", label: "Enter your tools", sub: "Plans, seats, spend" },
+            { step: "2", label: "Instant audit", sub: "Rule-based analysis" },
+            { step: "3", label: "See your savings", sub: "Shareable report" },
+          ].map((s) => (
+            <div key={s.step} className="card p-4">
+              <div className="text-brand-400 font-mono text-sm mb-1">Step {s.step}</div>
+              <div className="font-display font-semibold text-sm">{s.label}</div>
+              <div className="text-xs text-gray-500 mt-0.5">{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-    return publicAudit as unknown as AuditResult;
-  } catch (err) {
-    console.error("Failed to fetch audit from DB:", err);
-    return null;
-  }
-}
+      {/* Form */}
+      <section className="max-w-3xl mx-auto px-6 pb-24">
+        <SpendForm />
+      </section>
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { id: string };
-}): Promise<Metadata> {
-  const audit = await getAudit(params.id);
-  if (!audit) return { title: "Audit Not Found" };
-
-  const title = audit.isAlreadyOptimal
-    ? "My AI stack is already optimized ✅"
-    : `I found $${audit.totalMonthlySavings?.toLocaleString()}/mo in AI savings 💰`;
-
-  const description = audit.isAlreadyOptimal
-    ? "Check if your team is overpaying on AI tools — free instant audit."
-    : `That's $${audit.totalAnnualSavings?.toLocaleString()}/year. See the full breakdown and check your own stack.`;
-
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL ??
-    (process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000");
-
-  const ogImageUrl = `${base}/api/og?savings=${audit.totalMonthlySavings ?? 0}&annual=${audit.totalAnnualSavings ?? 0}&optimal=${audit.isAlreadyOptimal ?? false}`;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      url: `${base}/audit/${params.id}`,
-      type: "website",
-      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [ogImageUrl],
-    },
-  };
-}
-
-export default async function AuditPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const audit = await getAudit(params.id);
-  if (!audit) notFound();
-
-  return <AuditResults audit={audit as AuditResult} auditId={params.id} />;
+      {/* Footer */}
+      <footer className="border-t border-dark-700 py-6 text-center text-sm text-gray-500">
+        Built by{" "}
+        <a href="https://credex.rocks" className="text-brand-400 hover:underline">
+          Credex
+        </a>{" "}
+        · Discounted AI infrastructure credits for startups
+      </footer>
+    </main>
+  );
 }
