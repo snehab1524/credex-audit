@@ -1,16 +1,6 @@
 // lib/mongodb.ts
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-// NOTE: Do not throw at module-import time.
-// Next can crash route rendering (causing 500s for unrelated pages) if env is missing.
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI is missing. /api routes that use MongoDB will fail.");
-}
-
-
-// Use a global cache to avoid reconnecting on every hot reload in dev
 declare global {
   // eslint-disable-next-line no-var
   var mongooseCache: {
@@ -23,11 +13,15 @@ const cached = global.mongooseCache ?? { conn: null, promise: null };
 global.mongooseCache = cached;
 
 export async function connectDB(): Promise<typeof mongoose> {
-  if (cached.conn) return cached.conn;
+  const MONGODB_URI = process.env.MONGODB_URI;
 
   if (!MONGODB_URI) {
-    throw new Error("MONGODB_URI is not set");
+    throw new Error(
+      "MONGODB_URI environment variable is not set. Add it in Vercel → Settings → Environment Variables."
+    );
   }
+
+  if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
     cached.promise = mongoose.connect(MONGODB_URI, {
@@ -38,4 +32,3 @@ export async function connectDB(): Promise<typeof mongoose> {
   cached.conn = await cached.promise;
   return cached.conn;
 }
-
