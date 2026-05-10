@@ -13,8 +13,7 @@ A free web app that audits your AI tool subscriptions and tells you exactly wher
 
 ## Live Demo
 
-🔗 [your-app.vercel.app](https://credex-audit-ten.vercel.app/)
-
+🔗 https://credex-audit-ten.vercel.app
 ---
 
 ## Quick Start
