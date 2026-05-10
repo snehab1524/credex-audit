@@ -3,26 +3,28 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import AuditResults from "@/components/AuditResults";
 import type { AuditResult } from "@/types";
-
-function getBaseUrl(): string {
-  // Vercel automatically sets VERCEL_URL for every deployment
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  // Fallback to manually set URL
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  // Local development
-  return "http://localhost:3000";
-}
+import { connectDB } from "@/lib/mongodb";
+import { Audit } from "@/lib/models";
 
 async function getAudit(id: string): Promise<AuditResult | null> {
   try {
-    const base = getBaseUrl();
-    const res = await fetch(`${base}/api/audit/${id}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return res.json();
+    await connectDB();
+    const audit = await Audit.findOne({ id }).lean() as unknown as AuditResult & {
+      email?: string;
+      companyName?: string;
+      _id?: unknown;
+      __v?: unknown;
+    } | null;
+
+    if (!audit) return null;
+
+    // Strip private fields
+    const { email: _e, companyName: _c, _id: _id2, __v: _v, ...publicAudit } = audit;
+    void _e; void _c; void _id2; void _v;
+
+    return publicAudit as unknown as AuditResult;
   } catch (err) {
-    console.error("Failed to fetch audit:", err);
+    console.error("Failed to fetch audit from DB:", err);
     return null;
   }
 }
@@ -43,7 +45,12 @@ export async function generateMetadata({
     ? "Check if your team is overpaying on AI tools — free instant audit."
     : `That's $${audit.totalAnnualSavings?.toLocaleString()}/year. See the full breakdown and check your own stack.`;
 
-  const base = getBaseUrl();
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
+
   const ogImageUrl = `${base}/api/og?savings=${audit.totalMonthlySavings ?? 0}&annual=${audit.totalAnnualSavings ?? 0}&optimal=${audit.isAlreadyOptimal ?? false}`;
 
   return {
@@ -73,5 +80,5 @@ export default async function AuditPage({
   const audit = await getAudit(params.id);
   if (!audit) notFound();
 
-  return <AuditResults audit={audit} auditId={params.id} />;
+  return <AuditResults audit={audit as AuditResult} auditId={params.id} />;
 }
